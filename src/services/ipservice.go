@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"woodpecker/config"
+	"woodpecker/src/config"
 )
 
 func GetPublicIP(config *config.Config) (string, error) {
