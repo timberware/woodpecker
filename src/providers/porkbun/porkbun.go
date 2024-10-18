@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"woodpecker/config"
-	"woodpecker/providers"
+	"woodpecker/src/config"
+	"woodpecker/src/providers"
 )
 
 type Porkbun struct {
@@ -34,11 +34,11 @@ func New(config *config.Config) providers.DNSProvider {
 }
 
 func (p *Porkbun) GetCurrentARecord() (string, error) {
-	url := fmt.Sprintf("%s%s/A/%s", p.config.RetrieveByNameTypeURL, p.config.Domain, p.config.Subdomain)
+	url := fmt.Sprintf("%s%s/A/%s", p.config.PorkbunRetrieveByNameTypeURL, p.config.PorkbunDomain, p.config.PorkbunSubdomain)
 
 	body := map[string]string{
-		"secretapikey": p.config.SecretKey,
-		"apikey":       p.config.APIKey,
+		"secretapikey": p.config.PorkbunSecretKey,
+		"apikey":       p.config.PorkbunAPIKey,
 	}
 
 	bodyData, _ := json.Marshal(body)
@@ -60,18 +60,18 @@ func (p *Porkbun) GetCurrentARecord() (string, error) {
 	}
 
 	if len(dnsResponse.Records) == 0 {
-		return "", fmt.Errorf("no A records found for %s.%s", p.config.Subdomain, p.config.Domain)
+		return "", fmt.Errorf("no A records found for %s.%s", p.config.PorkbunSubdomain, p.config.PorkbunDomain)
 	}
 
 	return dnsResponse.Records[0].Content, nil
 }
 
 func (p *Porkbun) UpdateARecord(ip string) error {
-	url := fmt.Sprintf("%s%s/A/%s", p.config.EditByNameTypeURL, p.config.Domain, p.config.Subdomain)
+	url := fmt.Sprintf("%s%s/A/%s", p.config.PorkbunEditByNameTypeURL, p.config.PorkbunDomain, p.config.PorkbunSubdomain)
 
 	body := map[string]string{
-		"secretapikey": p.config.SecretKey,
-		"apikey":       p.config.APIKey,
+		"secretapikey": p.config.PorkbunSecretKey,
+		"apikey":       p.config.PorkbunAPIKey,
 		"content":      ip,
 	}
 
@@ -100,5 +100,6 @@ func (p *Porkbun) UpdateARecord(ip string) error {
 		return fmt.Errorf("failed to update DNS record, response: %v", response)
 	}
 
+	fmt.Println("Porkbun DNS A record updated successfully")
 	return nil
 }
