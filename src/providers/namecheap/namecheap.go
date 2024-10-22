@@ -49,6 +49,5 @@ func (n *Namecheap) UpdateARecord(ip string) error {
 		return fmt.Errorf("failed to update Namecheap DNS record: %s", string(body))
 	}
 
-	fmt.Println("Namecheap DNS A record updated successfully")
 	return nil
 }

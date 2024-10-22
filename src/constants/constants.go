@@ -1,3 +1,4 @@
 package constants
 
-const Filename = "pecker.conf"
+const ConfigFilename = "pecker.conf"
+const CurrentIpFilename = "current_ip.conf"

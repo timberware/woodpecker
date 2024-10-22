@@ -100,6 +100,5 @@ func (p *Porkbun) UpdateARecord(ip string) error {
 		return fmt.Errorf("failed to update DNS record, response: %v", response)
 	}
 
-	fmt.Println("Porkbun DNS A record updated successfully")
 	return nil
 }
