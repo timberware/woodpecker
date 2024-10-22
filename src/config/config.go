@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"woodpecker/src/constants"
 
 	"github.com/joho/godotenv"
@@ -10,6 +11,7 @@ import (
 
 type Config struct {
 	IPService                    string
+	CheckInterval                int
 	PorkbunAPIKey                string
 	PorkbunSecretKey             string
 	PorkbunDomain                string
@@ -22,14 +24,21 @@ type Config struct {
 	NamecheapSubdomain           string
 }
 
-func LoadConfig() (*Config, error) {
-	err := godotenv.Load(constants.Filename)
+func LoadConfig(configPath string) (*Config, error) {
+	err := godotenv.Load(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load config file %s: %v", constants.Filename, err)
+		return nil, fmt.Errorf("failed to load config file %s: %v", constants.ConfigFilename, err)
+	}
+
+	intervalStr := os.Getenv("CHECK_INTERVAL")
+	interval, err := strconv.Atoi(intervalStr)
+	if err != nil || interval <= 0 {
+		interval = 3
 	}
 
 	config := &Config{
 		IPService:                    os.Getenv("IP_SERVICE"),
+		CheckInterval:                interval,
 		PorkbunAPIKey:                os.Getenv("PORKBUN_API_KEY"),
 		PorkbunSecretKey:             os.Getenv("PORKBUN_SECRET_KEY"),
 		PorkbunDomain:                os.Getenv("PORKBUN_DOMAIN"),
@@ -43,15 +52,15 @@ func LoadConfig() (*Config, error) {
 	}
 
 	if config.IPService == "" {
-		return nil, fmt.Errorf("missing required IP Service field in %s", constants.Filename)
+		return nil, fmt.Errorf("missing required IP Service field in %s", constants.ConfigFilename)
 	}
 
 	if config.PorkbunAPIKey == "" || config.PorkbunSecretKey == "" || config.PorkbunDomain == "" || config.PorkbunEditByNameTypeURL == "" || config.PorkbunRetrieveByNameTypeURL == "" {
-		return nil, fmt.Errorf("missing required Porkbun key fields in %s", constants.Filename)
+		return nil, fmt.Errorf("missing required Porkbun key fields in %s", constants.ConfigFilename)
 	}
 
 	if config.NamecheapPassword == "" || config.NamecheapDomain == "" || config.NamecheapEditURL == "" {
-		return nil, fmt.Errorf("missing required Namecheap key fields in %s", constants.Filename)
+		return nil, fmt.Errorf("missing required Namecheap key fields in %s", constants.ConfigFilename)
 	}
 
 	return config, nil

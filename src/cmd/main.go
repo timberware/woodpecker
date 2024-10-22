@@ -2,57 +2,133 @@ package main
 
 import (
 	"fmt"
+	"github.com/robfig/cron/v3"
 	"os"
-	"woodpecker/src/providers/namecheap"
-
+	"path/filepath"
 	"woodpecker/src/config"
+	"woodpecker/src/constants"
+	"woodpecker/src/internal/utils"
+	"woodpecker/src/providers/namecheap"
 	"woodpecker/src/providers/porkbun"
 	"woodpecker/src/services"
 )
 
 func main() {
-	loadConfig, err := config.LoadConfig()
+	configDir, err := utils.GetAppPath()
+	if err != nil {
+		fmt.Println("failed to get config path:", err)
+		os.Exit(1)
+	}
+	configPath := filepath.Join(configDir, constants.ConfigFilename)
+
+	loadConfig, err := config.LoadConfig(configPath)
 	if err != nil {
 		fmt.Println("error loading environment file:", err)
 		os.Exit(1)
 	}
 
-	ip, err := services.GetPublicIP(loadConfig)
+	err = updateDNS(loadConfig, configDir)
 	if err != nil {
-		fmt.Println("failed to retrieve public IP:", err)
+		fmt.Printf("error during initial DNS update: %v\n", err)
 		os.Exit(1)
+	}
+
+	setupCron(loadConfig, configDir)
+
+	select {}
+}
+
+func setupCron(config *config.Config, configPath string) {
+	c := cron.New()
+	checkInterval := fmt.Sprintf("@every %dm", config.CheckInterval)
+
+	_, err := c.AddFunc(checkInterval, func() {
+		err := updateDNS(config, configPath)
+		if err != nil {
+			fmt.Printf("error during DNS update: %v\n", err)
+		}
+	})
+
+	if err != nil {
+		fmt.Println("failed to schedule DNS update:", err)
+		os.Exit(1)
+	}
+
+	c.Start()
+}
+
+func updateDNS(config *config.Config, configPath string) error {
+	ip, err := services.GetPublicIP(config)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve public IP: %v", err)
 	}
 	fmt.Println("current public IP address:", ip)
 
-	fmt.Println("checking Porkbun DNS records...")
-	dnsProvider := porkbun.New(loadConfig)
-	dnsIP, err := dnsProvider.GetCurrentARecord()
+	storedIP, err := utils.ReadIPFromFile(configPath)
 	if err != nil {
-		fmt.Println("failed to retrieve Porkbun DNS A record:", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to read stored IP: %v", err)
+	}
+	fmt.Println("current stored public IP address:", storedIP)
+
+	if storedIP == ip {
+		fmt.Println("IP address unchanged, skipping DNS updates")
+		return nil
+	}
+
+	fmt.Println("IP address has changed, proceeding to update DNS records...")
+
+	err = updatePorkbunDNS(config, ip)
+	if err != nil {
+		return err
+	}
+
+	err = updateNamecheapDNS(config, ip)
+	if err != nil {
+		return err
+	}
+
+	err = utils.WriteIPToFile(ip, configPath)
+	if err != nil {
+		return fmt.Errorf("failed to store new updated public IP address: %v", err)
+	}
+
+	fmt.Println("DNS updates completed for both providers.")
+	return nil
+}
+
+func updatePorkbunDNS(config *config.Config, ip string) error {
+	fmt.Println("checking Porkbun DNS records...")
+	porkbunProvider := porkbun.New(config)
+
+	dnsIP, err := porkbunProvider.GetCurrentARecord()
+	if err != nil {
+		return fmt.Errorf("failed to retrieve Porkbun DNS A record: %v", err)
 	}
 	fmt.Println("current Porkbun DNS A record IP address:", dnsIP)
 
 	if dnsIP != ip {
 		fmt.Printf("Porkbun DNS record is outdated- current: %s, expected: %s\n", dnsIP, ip)
-		err := dnsProvider.UpdateARecord(ip)
+		err := porkbunProvider.UpdateARecord(ip)
 		if err != nil {
-			fmt.Println("failed to update DNS A record:", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to update Porkbun DNS A record: %v", err)
 		}
+		fmt.Println("Porkbun DNS A record updated successfully.")
 	} else {
-		fmt.Println("Porkbun DNS A record already up to date")
+		fmt.Println("Porkbun DNS A record already up to date.")
 	}
 
+	return nil
+}
+
+func updateNamecheapDNS(config *config.Config, ip string) error {
 	fmt.Println("updating Namecheap DNS records...")
-	dnsProviderNamecheap := namecheap.New(loadConfig)
+	namecheapProvider := namecheap.New(config)
 
-	err = dnsProviderNamecheap.UpdateARecord(ip)
+	err := namecheapProvider.UpdateARecord(ip)
 	if err != nil {
-		fmt.Printf("failed to update Namecheap DNS A record: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to update Namecheap DNS A record: %v", err)
 	}
+	fmt.Println("Namecheap DNS A record updated successfully.")
 
-	fmt.Println("DNS updates completed for both providers.")
-	os.Exit(0)
+	return nil
 }
