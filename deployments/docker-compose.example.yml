@@ -1,0 +1,28 @@
+services:
+  woodpecker:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile
+    environment:
+      # IP config
+      IP_SERVICE: https://api.ipify.org # https://ifconfig.me || https://ipinfo.io/ip
+      CHECK_INTERVAL: 1 # interval in minutes to check IP address
+
+      # PorkBun config (optional)
+      PORKBUN_API_EDIT_URL: https://api.porkbun.com/api/json/v3/dns/editByNameType/
+      PORKBUN_API_RETRIEVE_URL: https://api.porkbun.com/api/json/v3/dns/retrieveByNameType/
+      PORKBUN_API_KEY: porkbun-api-key
+      PORKBUN_SECRET_KEY: porkbun-secret-key
+      PORKBUN_DOMAIN: example.com
+      PORKBUN_SUBDOMAIN: www # leave blank for root
+
+      # Namecheap config (optional)
+      NAMECHEAP_EDIT_URL: https://dynamicdns.park-your-domain.com/update
+      NAMECHEAP_PASSWORD: namecheap-password
+      NAMECHEAP_DOMAIN: example.com
+      NAMECHEAP_SUBDOMAIN: www # leave blank for root
+    volumes:
+      - ip-data:/app/ip-data
+
+volumes:
+  ip-data:

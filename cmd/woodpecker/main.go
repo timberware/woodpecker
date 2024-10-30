@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"github.com/robfig/cron/v3"
 	"os"
-	"path/filepath"
-	"woodpecker/src/config"
-	"woodpecker/src/constants"
-	"woodpecker/src/internal/utils"
-	"woodpecker/src/providers/namecheap"
-	"woodpecker/src/providers/porkbun"
-	"woodpecker/src/services"
+	"woodpecker/internal/config"
+	"woodpecker/internal/providers/namecheap"
+	"woodpecker/internal/providers/porkbun"
+	"woodpecker/internal/services"
+	"woodpecker/internal/utils"
 )
 
 func main() {
@@ -19,9 +17,8 @@ func main() {
 		fmt.Println("failed to get config path:", err)
 		os.Exit(1)
 	}
-	configPath := filepath.Join(configDir, constants.ConfigFilename)
 
-	loadConfig, err := config.LoadConfig(configPath)
+	loadConfig, err := config.LoadConfig()
 	if err != nil {
 		fmt.Println("error loading environment file:", err)
 		os.Exit(1)
@@ -77,14 +74,22 @@ func updateDNS(config *config.Config, configPath string) error {
 
 	fmt.Println("IP address has changed, proceeding to update DNS records...")
 
-	err = updatePorkbunDNS(config, ip)
-	if err != nil {
-		return err
+	if config.PorkbunAPIKey != "" && config.PorkbunSecretKey != "" {
+		err = updatePorkbunDNS(config, ip)
+		if err != nil {
+			return err
+		}
+	} else {
+		fmt.Println("skipping Porkbun DNS update as required config not provided")
 	}
 
-	err = updateNamecheapDNS(config, ip)
-	if err != nil {
-		return err
+	if config.NamecheapPassword != "" {
+		err = updateNamecheapDNS(config, ip)
+		if err != nil {
+			return err
+		}
+	} else {
+		fmt.Println("skipping Namecheap DNS update as required config not provided")
 	}
 
 	err = utils.WriteIPToFile(ip, configPath)

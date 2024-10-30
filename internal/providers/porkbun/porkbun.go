@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"woodpecker/src/config"
-	"woodpecker/src/providers"
+	"woodpecker/internal/config"
+	"woodpecker/internal/providers"
 )
 
 type Porkbun struct {
