@@ -5,8 +5,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"woodpecker/src/config"
-	"woodpecker/src/providers"
+	"woodpecker/internal/config"
+	"woodpecker/internal/providers"
 )
 
 type Namecheap struct {

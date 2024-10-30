@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"woodpecker/src/constants"
-
-	"github.com/joho/godotenv"
+	"woodpecker/internal/constants"
 )
 
 type Config struct {
@@ -24,12 +22,7 @@ type Config struct {
 	NamecheapSubdomain           string
 }
 
-func LoadConfig(configPath string) (*Config, error) {
-	err := godotenv.Load(configPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load config file %s: %v", constants.ConfigFilename, err)
-	}
-
+func LoadConfig() (*Config, error) {
 	intervalStr := os.Getenv("CHECK_INTERVAL")
 	interval, err := strconv.Atoi(intervalStr)
 	if err != nil || interval <= 0 {
@@ -53,14 +46,6 @@ func LoadConfig(configPath string) (*Config, error) {
 
 	if config.IPService == "" {
 		return nil, fmt.Errorf("missing required IP Service field in %s", constants.ConfigFilename)
-	}
-
-	if config.PorkbunAPIKey == "" || config.PorkbunSecretKey == "" || config.PorkbunDomain == "" || config.PorkbunEditByNameTypeURL == "" || config.PorkbunRetrieveByNameTypeURL == "" {
-		return nil, fmt.Errorf("missing required Porkbun key fields in %s", constants.ConfigFilename)
-	}
-
-	if config.NamecheapPassword == "" || config.NamecheapDomain == "" || config.NamecheapEditURL == "" {
-		return nil, fmt.Errorf("missing required Namecheap key fields in %s", constants.ConfigFilename)
 	}
 
 	return config, nil

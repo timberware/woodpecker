@@ -4,21 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
-	"woodpecker/src/constants"
+	"woodpecker/internal/constants"
 )
 
 func GetAppPath() (string, error) {
-	var dir string
-
-	switch runtime.GOOS {
-	case "windows":
-		appData := os.Getenv("APPDATA")
-		dir = filepath.Join(appData, "woodpecker")
-	case "linux":
-		home := os.Getenv("HOME")
-		dir = filepath.Join(home, ".local", "share", "woodpecker")
-	}
+	dir := constants.CurrentIPFilenameDir
 
 	err := os.MkdirAll(dir, os.ModePerm)
 	if err != nil {
