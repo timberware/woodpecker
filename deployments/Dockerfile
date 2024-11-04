@@ -18,4 +18,8 @@ WORKDIR /app
 
 COPY --from=builder /app/woodpecker .
 
+LABEL org.opencontainers.image.source="https://github.com/timberware/woodpecker"
+LABEL org.opencontainers.image.description="woodpecker is an app that automatically updates DNS A records for a specified domain and subdomain hosted by Namecheap and/or PorkBun"
+LABEL org.opencontainers.image.licenses=GNUGPLv3
+
 CMD ["./woodpecker"]
