@@ -2,31 +2,35 @@ package main
 
 import (
 	"fmt"
-	"github.com/robfig/cron/v3"
 	"os"
+
 	"woodpecker/internal/config"
 	"woodpecker/internal/providers/namecheap"
 	"woodpecker/internal/providers/porkbun"
 	"woodpecker/internal/services"
 	"woodpecker/internal/utils"
+
+	"github.com/robfig/cron/v3"
 )
 
 func main() {
+	utils.InitLogger()
+
 	configDir, err := utils.GetAppPath()
 	if err != nil {
-		fmt.Println("failed to get config path:", err)
+		utils.Log.Error().Err(err).Msg("an error occurred")
 		os.Exit(1)
 	}
 
 	loadConfig, err := config.LoadConfig()
 	if err != nil {
-		fmt.Println("error loading environment file:", err)
+		utils.Log.Error().Err(err).Msg("an error occurred")
 		os.Exit(1)
 	}
 
 	err = updateDNS(loadConfig, configDir)
 	if err != nil {
-		fmt.Printf("error during initial DNS update: %v\n", err)
+		utils.Log.Error().Err(err).Msg("an error occurred")
 		os.Exit(1)
 	}
 
@@ -42,12 +46,12 @@ func setupCron(config *config.Config, configPath string) {
 	_, err := c.AddFunc(checkInterval, func() {
 		err := updateDNS(config, configPath)
 		if err != nil {
-			fmt.Printf("error during DNS update: %v\n", err)
+			utils.Log.Error().Err(err).Msg("error during DNS update: " + err.Error())
 		}
 	})
 
 	if err != nil {
-		fmt.Println("failed to schedule DNS update:", err)
+		utils.Log.Fatal().Err(err).Msg("failed to schedule DNS update")
 		os.Exit(1)
 	}
 
@@ -57,30 +61,26 @@ func setupCron(config *config.Config, configPath string) {
 func updateDNS(config *config.Config, configPath string) error {
 	ip, err := services.GetPublicIP(config)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve public IP: %v", err)
+		return err
 	}
-	fmt.Println("current public IP address:", ip)
 
 	storedIP, err := utils.ReadIPFromFile(configPath)
 	if err != nil {
-		return fmt.Errorf("failed to read stored IP: %v", err)
+		return err
 	}
-	fmt.Println("current stored public IP address:", storedIP)
 
 	if storedIP == ip {
-		fmt.Println("IP address unchanged, skipping DNS updates")
+		utils.Log.Info().Msgf("public and stored IP address equal (%s), sleeping for %d minute(s)", ip, config.CheckInterval)
 		return nil
 	}
 
-	fmt.Println("IP address has changed, proceeding to update DNS records...")
+	utils.Log.Info().Msg("public and stored IP address not equal, proceeding to update DNS records...")
 
 	if config.PorkbunAPIKey != "" && config.PorkbunSecretKey != "" {
 		err = updatePorkbunDNS(config, ip)
 		if err != nil {
 			return err
 		}
-	} else {
-		fmt.Println("skipping Porkbun DNS update as required config not provided")
 	}
 
 	if config.NamecheapPassword != "" {
@@ -88,52 +88,51 @@ func updateDNS(config *config.Config, configPath string) error {
 		if err != nil {
 			return err
 		}
-	} else {
-		fmt.Println("skipping Namecheap DNS update as required config not provided")
 	}
 
 	err = utils.WriteIPToFile(ip, configPath)
 	if err != nil {
-		return fmt.Errorf("failed to store new updated public IP address: %v", err)
+		return err
 	}
 
-	fmt.Println("DNS updates completed for both providers.")
+	utils.Log.Info().Str("level", "update").Msgf("update complete, sleeping for %d minute(s)", config.CheckInterval)
 	return nil
 }
 
 func updatePorkbunDNS(config *config.Config, ip string) error {
-	fmt.Println("checking Porkbun DNS records...")
+	utils.Log.Info().Msg("checking Porkbun DNS records...")
 	porkbunProvider := porkbun.New(config)
 
 	dnsIP, err := porkbunProvider.GetCurrentARecord()
 	if err != nil {
-		return fmt.Errorf("failed to retrieve Porkbun DNS A record: %v", err)
+		utils.Log.Error().Err(err).Msg("failed to retrieve Porkbun DNS A record")
+		return err
 	}
-	fmt.Println("current Porkbun DNS A record IP address:", dnsIP)
+	utils.Log.Info().Msg("current Porkbun DNS A record IP address")
 
 	if dnsIP != ip {
-		fmt.Printf("Porkbun DNS record is outdated- current: %s, expected: %s\n", dnsIP, ip)
+		utils.Log.Info().Msg("Porkbun DNS record is outdated")
 		err := porkbunProvider.UpdateARecord(ip)
 		if err != nil {
-			return fmt.Errorf("failed to update Porkbun DNS A record: %v", err)
+			return fmt.Errorf("failed to update Porkbun DNS A record: %w", err)
 		}
-		fmt.Println("Porkbun DNS A record updated successfully.")
-	} else {
-		fmt.Println("Porkbun DNS A record already up to date.")
+
+		utils.Log.Info().Str("level", "update").Msgf("PorkBun (%s.%s) | DNS A record updated successfully.", config.PorkbunSubdomain, config.PorkbunDomain)
 	}
 
 	return nil
 }
 
 func updateNamecheapDNS(config *config.Config, ip string) error {
-	fmt.Println("updating Namecheap DNS records...")
+	utils.Log.Info().Str("level", "update").Msg("updating Namecheap DNS records...")
 	namecheapProvider := namecheap.New(config)
 
 	err := namecheapProvider.UpdateARecord(ip)
 	if err != nil {
-		return fmt.Errorf("failed to update Namecheap DNS A record: %v", err)
+		return fmt.Errorf("failed to update Namecheap DNS A record: %w", err)
 	}
-	fmt.Println("Namecheap DNS A record updated successfully.")
+
+	utils.Log.Info().Str("level", "update").Msgf("Namecheap (%s.%s) | DNS A record updated successfully.", config.NamecheapSubdomain, config.NamecheapDomain)
 
 	return nil
 }

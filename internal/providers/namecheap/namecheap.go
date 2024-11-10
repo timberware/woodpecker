@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
 	"woodpecker/internal/config"
 	"woodpecker/internal/providers"
 )
@@ -18,7 +19,7 @@ func New(config *config.Config) providers.DNSProvider {
 }
 
 func (n *Namecheap) GetCurrentARecord() (string, error) {
-	return "", fmt.Errorf("GetCurrentARecord not supported in namecheap via API access")
+	return "", fmt.Errorf("GetCurrentARecord not supported in namecheap without API access requirements: https://www.namecheap.com/support/knowledgebase/article.aspx/9739/63/api-faq/#c")
 }
 
 func (n *Namecheap) UpdateARecord(ip string) error {
@@ -32,7 +33,7 @@ func (n *Namecheap) UpdateARecord(ip string) error {
 
 	resp, err := http.Get(url)
 	if err != nil {
-		return fmt.Errorf("failed to send update request to Namecheap: %v", err)
+		return fmt.Errorf("failed to send update request to Namecheap: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -42,7 +43,7 @@ func (n *Namecheap) UpdateARecord(ip string) error {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("failed to read response from Namecheap: %v", err)
+		return fmt.Errorf("failed to read response from Namecheap: %w", err)
 	}
 
 	if strings.Contains(string(body), "<ErrCount>1</ErrCount>") {
