@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
 	"woodpecker/internal/config"
 	"woodpecker/internal/providers"
 )
@@ -45,7 +46,7 @@ func (p *Porkbun) GetCurrentARecord() (string, error) {
 
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyData))
 	if err != nil {
-		return "", fmt.Errorf("failed to send request: %v", err)
+		return "", fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -56,7 +57,7 @@ func (p *Porkbun) GetCurrentARecord() (string, error) {
 	var dnsResponse DNSResponse
 	err = json.NewDecoder(resp.Body).Decode(&dnsResponse)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse DNS response: %v", err)
+		return "", fmt.Errorf("failed to parse DNS response: %w", err)
 	}
 
 	if len(dnsResponse.Records) == 0 {
@@ -77,12 +78,12 @@ func (p *Porkbun) UpdateARecord(ip string) error {
 
 	bodyData, err := json.Marshal(body)
 	if err != nil {
-		return fmt.Errorf("failed to parse request body: %v", err)
+		return fmt.Errorf("failed to parse request body: %w", err)
 	}
 
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(bodyData))
 	if err != nil {
-		return fmt.Errorf("failed to send update request: %v", err)
+		return fmt.Errorf("failed to send update request: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -93,11 +94,11 @@ func (p *Porkbun) UpdateARecord(ip string) error {
 	var response map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
-		return fmt.Errorf("failed to parse DNS update response: %v", err)
+		return fmt.Errorf("failed to parse DNS update response: %w", err)
 	}
 
 	if response["status"] != "SUCCESS" {
-		return fmt.Errorf("failed to update DNS record, response: %v", response)
+		return fmt.Errorf("failed to update DNS record, response: %s", response)
 	}
 
 	return nil

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+
 	"woodpecker/internal/constants"
 )
 
@@ -45,7 +46,13 @@ func LoadConfig() (*Config, error) {
 	}
 
 	if config.IPService == "" {
-		return nil, fmt.Errorf("missing required IP Service field in %s", constants.ConfigFilename)
+		err = fmt.Errorf("missing required IP Service field in %s", constants.ConfigFilename)
+		return nil, err
+	}
+
+	if config.PorkbunSecretKey == "" && config.NamecheapPassword == "" {
+		err = fmt.Errorf("no domain variables specified in %s, exiting", constants.ConfigFilename)
+		return nil, err
 	}
 
 	return config, nil
