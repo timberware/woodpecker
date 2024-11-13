@@ -4,6 +4,8 @@ services:
       context: ..
       dockerfile: deployments/Dockerfile
     environment:
+      TZ: America/Toronto
+
       # IP config
       IP_SERVICE: https://api.ipify.org # https://ifconfig.me || https://ipinfo.io/ip
       CHECK_INTERVAL: 1 # interval in minutes to check IP address
